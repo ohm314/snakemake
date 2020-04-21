@@ -926,7 +926,7 @@ class GenericClusterExecutor(ClusterExecutor):
         if ext_jobid and ext_jobid[0]:
             ext_jobid = ext_jobid[0]
             self.external_jobid.update((f, ext_jobid) for f in job.output)
-            logger.info(
+            logger.debug(
                 "Submitted {} {} with external jobid '{}'.".format(
                     "group job" if job.is_group() else "job", jobid, ext_jobid
                 )
@@ -996,6 +996,7 @@ class GenericClusterExecutor(ClusterExecutor):
                 return running
 
         while True:
+            start = time.time()
             with self.lock:
                 if not self.wait:
                     return
@@ -1024,6 +1025,12 @@ class GenericClusterExecutor(ClusterExecutor):
                         still_running.append(active_job)
             with self.lock:
                 self.active_jobs.extend(still_running)
+            logger.info(
+                "Checking status of {} jobs: took {:.2f} seconds.".format(
+                    len(active_jobs),
+                    time.time() - start
+                )
+            )
             sleep()
 
 

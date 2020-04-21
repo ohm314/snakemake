@@ -311,6 +311,7 @@ class JobScheduler:
                 # work around so that the wait does not prevent keyboard interrupts
                 # while not self._open_jobs.acquire(False):
                 #    time.sleep(1)
+                loop_start = time.time()
                 self._open_jobs.acquire()
 
                 # obtain needrun and running jobs in a thread-safe way
@@ -344,6 +345,11 @@ class JobScheduler:
 
                 # continue if no new job needs to be executed
                 if not needrun:
+                    logger.info(
+                        "Scheduler loop bailed after {:.2f} seconds.".format(
+                            time.time() - loop_start,
+                        )
+                    )
                     continue
 
                 # select jobs by solving knapsack problem (omit with dryrun)
@@ -357,7 +363,18 @@ class JobScheduler:
                         "Ready jobs ({}):\n\t".format(len(needrun))
                         + "\n\t".join(map(str, needrun))
                     )
+                    start = time.time()
+                    old_resources = str(self.resources)
                     run = self.job_selector(needrun)
+                    logger.info(
+                        "Selecting {} out of {} jobs: took {:.2f} seconds. [{} -> {}]".format(
+                            len(run),
+                            len(needrun),
+                            time.time() - start,
+                            old_resources,
+                            self.resources
+                        )
+                    )
                     logger.debug(
                         "Selected jobs ({}):\n\t".format(len(run))
                         + "\n\t".join(map(str, run))
@@ -369,9 +386,21 @@ class JobScheduler:
                 with self._lock:
                     self.running.update(run)
                 # actually run jobs
+                start = time.time()
                 for job in run:
                     with self.rate_limiter:
                         self.run(job)
+                logger.info(
+                    "Launching {} jobs: took {:.2f} seconds.".format(
+                        len(run),
+                        time.time() - start,
+                    )
+                )
+                logger.info(
+                    "Scheduler loop consumed {:.2f} seconds.".format(
+                        time.time() - loop_start,
+                    )
+                )
         except (KeyboardInterrupt, SystemExit):
             logger.info(
                 "Terminating processes on user request, this might take some time."
@@ -600,4 +629,4 @@ Problem", Akcay, Li, Xu, Annals of Operations Research, 2012
 
     def progress(self):
         """ Display the progress. """
-        logger.progress(done=self.finished_jobs, total=len(self.dag))
+        logger.progress(done=self.finished_jobs, total=len(self.dag), active=len(self.running))

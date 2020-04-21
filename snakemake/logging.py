@@ -199,8 +199,8 @@ class Logger:
     def error(self, msg):
         self.handler(dict(level="error", msg=msg))
 
-    def progress(self, done=None, total=None):
-        self.handler(dict(level="progress", done=done, total=total))
+    def progress(self, done=None, total=None, active=None):
+        self.handler(dict(level="progress", done=done, total=total, active=None))
 
     def resources_info(self, msg):
         self.handler(dict(level="resources_info", msg=msg))
@@ -303,6 +303,7 @@ class Logger:
         level = msg["level"]
 
         if level == "job_info" and not self.quiet:
+            return
             if not self.last_msg_was_job_info:
                 self.logger.info("")
             timestamp()
@@ -320,6 +321,7 @@ class Logger:
 
             self.last_msg_was_job_info = True
         elif level == "group_info" and not self.quiet:
+            return
             timestamp()
             if not self.last_msg_was_job_info:
                 self.logger.info("")
@@ -383,15 +385,17 @@ class Logger:
             elif level == "progress" and not self.quiet:
                 done = msg["done"]
                 total = msg["total"]
+                active = msg["active"]
                 p = done / total
                 percent_fmt = ("{:.2%}" if p < 0.01 else "{:.0%}").format(p)
                 self.logger.info(
-                    "{} of {} steps ({}) done".format(done, total, percent_fmt)
+                    "{} of {} steps ({}) done, {} running".format(done, total, percent_fmt, active)
                 )
             elif level == "shellcmd":
                 if self.printshellcmds:
                     self.logger.warning(indent(msg["msg"]))
             elif level == "job_finished" and not self.quiet:
+                return
                 timestamp()
                 self.logger.info("Finished job {}.".format(msg["jobid"]))
                 pass
