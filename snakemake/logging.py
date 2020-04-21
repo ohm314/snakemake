@@ -200,7 +200,7 @@ class Logger:
         self.handler(dict(level="error", msg=msg))
 
     def progress(self, done=None, total=None, active=None):
-        self.handler(dict(level="progress", done=done, total=total, active=None))
+        self.handler(dict(level="progress", done=done, total=total, active=active))
 
     def resources_info(self, msg):
         self.handler(dict(level="resources_info", msg=msg))
